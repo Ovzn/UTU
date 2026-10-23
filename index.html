@@ -149,6 +149,10 @@
         .pd-thumb:hover { opacity: 1; }
         .pd-thumb.active { width: 72px; height: 72px; opacity: 1; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
         .pd-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        /* زر الإغلاق X: واضح دائماً وثابت أعلى النافذة حتى مع التمرير */
+        .utu-close { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 9999px; border: 1.5px solid #9ca3af; background: #f3f4f6; color: #111; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; line-height: 1; }
+        .utu-close:hover { background: #111; color: #fff; border-color: #111; }
+        .utu-modal-head { position: sticky; top: -1.5rem; z-index: 5; margin: -1.5rem -1.5rem 1rem; padding: 1rem 1.5rem; background: inherit; border-radius: 1rem 1rem 0 0; border-bottom: 1px solid rgba(128,128,128,.25); }
 </style>
     <style id="light-theme">
         /* تصميم فاتح بسيط: خلفية بيضاء، خط خفيف، بطاقات رمادية فاتحة */
@@ -277,7 +281,7 @@
                     <button onclick="router.navigate('account')" class="p-2 hover:bg-gray-800 rounded-full transition-colors">
                         <i class="fas fa-user text-xl text-accent"></i>
                     </button>
-                    <button class="md:hidden p-2" onclick="toggleMobileMenu()">
+                    <button class="p-2" onclick="toggleMobileMenu()" aria-label="القائمة">
                         <i class="fas fa-bars text-xl text-accent"></i>
                     </button>
                 </div>
@@ -305,8 +309,8 @@
     </nav>
 
     <!-- Mobile Side Menu -->
-    <div id="mobile-menu-overlay" class="md:hidden" onclick="closeMobileMenu()"></div>
-    <aside id="mobile-menu" class="md:hidden" aria-hidden="true">
+    <div id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <aside id="mobile-menu" aria-hidden="true">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
             <span class="text-lg font-bold">القائمة</span>
             <button onclick="closeMobileMenu()" aria-label="إغلاق" class="p-2 hover:bg-gray-800 rounded-full"><i class="fas fa-times text-xl"></i></button>
@@ -1579,7 +1583,7 @@
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4';
             modal.innerHTML = '<div class="bg-[#1a2236] rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto fade-in">' +
-                '<div class="flex items-center justify-between mb-4"><h3 class="text-xl font-bold">جدول المقاسات - ' + product.name + '</h3><button onclick="this.closest(\'.modal-overlay\').remove()" class="p-2 hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button></div>' +
+                '<div class="utu-modal-head flex items-center justify-between mb-4"><h3 class="text-xl font-bold">جدول المقاسات - ' + product.name + '</h3><button type="button" onclick="closeUtuModal(this)" aria-label="إغلاق" title="إغلاق" class="utu-close"><i class="fas fa-times"></i></button></div>' +
                 '<table class="w-full border-collapse"><thead><tr class="bg-gray-900"><th class="border p-3 text-right">المقاس</th><th class="border p-3 text-right">الصدر/الخصر (سم)</th></tr></thead><tbody>' +
                 Object.entries(product.sizeChart).map(function(entry) {
                     return '<tr><td class="border p-3 font-bold">' + entry[0] + '</td><td class="border p-3">' + entry[1] + '</td></tr>';
@@ -1595,7 +1599,7 @@
         function openImageModal(src) {
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4';
-            modal.innerHTML = '<div class="relative max-w-4xl w-full"><img src="' + src + '" class="w-full rounded-2xl"><button onclick="this.closest(\'.modal-overlay\').remove()" class="absolute -top-4 -right-4 w-10 h-10 bg-[#1a2236] rounded-full shadow-lg flex items-center justify-center"><i class="fas fa-times"></i></button></div>';
+            modal.innerHTML = '<div class="relative max-w-4xl w-full"><img src="' + src + '" class="w-full rounded-2xl"><button onclick="this.closest(\'.modal-overlay\').remove()" aria-label="إغلاق" class="utu-close" style="position:absolute;top:10px;right:10px;z-index:5"><i class="fas fa-times"></i></button></div>';
             document.body.appendChild(modal);
             modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
         }
@@ -2270,6 +2274,18 @@
                 '</div>';
         }
 
+        // إغلاق أي نافذة منبثقة (زر X أو إلغاء أو مفتاح Esc)
+        function closeUtuModal(el) {
+            var m = el && el.closest ? el.closest('.modal-overlay') : null;
+            if (m) m.remove();
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape') return;
+            var all = document.querySelectorAll('.modal-overlay');
+            var top = all[all.length - 1];
+            if (top && top.id !== 'cart-overlay') top.remove();
+        });
+
         function openCategoryForm(categoryId) {
             const isEdit = categoryId !== null && categoryId !== undefined;
             const category = isEdit ? categories.find(function(c) { return c.id === categoryId; }) : null;
@@ -2280,7 +2296,7 @@
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 overflow-y-auto';
             modal.innerHTML = '<div class="bg-[#1a2236] rounded-2xl p-6 max-w-md w-full my-8 fade-in">' +
-                '<div class="flex items-center justify-between mb-4"><h3 class="text-xl font-bold">' + (isEdit ? 'تعديل القسم' : 'إضافة قسم جديد') + '</h3><button onclick="this.closest(\'.modal-overlay\').remove()" class="p-2 hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button></div>' +
+                '<div class="utu-modal-head flex items-center justify-between mb-4"><h3 class="text-xl font-bold">' + (isEdit ? 'تعديل القسم' : 'إضافة قسم جديد') + '</h3><button type="button" onclick="closeUtuModal(this)" aria-label="إغلاق" title="إغلاق" class="utu-close"><i class="fas fa-times"></i></button></div>' +
                 '<div class="space-y-3">' +
                 '<div><label class="text-sm text-gray-300 block mb-1">اسم القسم</label><input id="cf-name" type="text" value="' + (category ? category.name.replace(/"/g,'&quot;') : '') + '" placeholder="مثال: عروض الشتاء" class="w-full px-3 py-2 border border-gray-700 rounded-lg input-focus outline-none"></div>' +
                 renderFontPicker('cf-font', category && category.font, 'cf-name,cf-preview-name', 'cat', 'نوع خط اسم القسم') +
@@ -2293,6 +2309,7 @@
                 '<div class="absolute top-0 inset-x-0 p-3 text-center"><i id="cf-preview-icon" class="fas ' + (category ? category.icon : 'fa-tag') + ' text-accent"></i><h4 id="cf-preview-name" class="font-bold text-white text-sm mt-1">' + (category ? category.name : 'اسم القسم') + '</h4></div>' +
                 '</div></div>' +
                 '<button onclick="saveCategoryForm(' + (isEdit ? '\'' + categoryId + '\'' : 'null') + ')" class="w-full py-3 btn-primary text-white rounded-lg font-bold mt-2">' + (isEdit ? 'حفظ التعديلات' : 'إضافة القسم') + '</button>' +
+                '<button type="button" onclick="closeUtuModal(this)" class="w-full py-3 border border-gray-600 rounded-lg font-bold hover:bg-gray-900">إلغاء والرجوع</button>' +
                 '</div></div>';
             document.body.appendChild(modal);
             const nameInput = document.getElementById('cf-name');
@@ -2425,7 +2442,7 @@
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 modal-overlay z-50 flex items-start justify-center p-4 overflow-y-auto';
             modal.innerHTML = '<div class="bg-[#1a2236] rounded-2xl p-6 max-w-lg w-full my-8 fade-in">' +
-                '<div class="flex items-center justify-between mb-4"><h3 class="text-xl font-bold">' + (isEdit ? 'تعديل المنتج' : 'إضافة منتج جديد') + '</h3><button onclick="this.closest(\'.modal-overlay\').remove()" class="p-2 hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button></div>' +
+                '<div class="utu-modal-head flex items-center justify-between mb-4"><h3 class="text-xl font-bold">' + (isEdit ? 'تعديل المنتج' : 'إضافة منتج جديد') + '</h3><button type="button" onclick="closeUtuModal(this)" aria-label="إغلاق" title="إغلاق" class="utu-close"><i class="fas fa-times"></i></button></div>' +
                 '<div class="space-y-3">' +
                 '<div><label class="text-sm text-gray-300 block mb-1">اسم المنتج</label><input id="pf-name" type="text" class="w-full px-3 py-2 border border-gray-700 rounded-lg input-focus outline-none"></div>' +
                 renderFontPicker('pf-name-font', product && product.nameFont, 'pf-name', 'name', 'نوع خط اسم المنتج') +
@@ -2458,6 +2475,7 @@
                 '<div><label class="text-sm text-gray-300 block mb-1">الوصف</label><textarea id="pf-desc" rows="2" class="w-full px-3 py-2 border border-gray-700 rounded-lg input-focus outline-none">' + (product ? product.description : '') + '</textarea></div>' +
                 renderFontPicker('pf-desc-font', product && product.descFont, 'pf-desc', 'desc', 'نوع خط الوصف') +
                 '<button onclick="saveProductForm(' + (isEdit ? productId : 'null') + ')" class="w-full py-3 btn-primary text-white rounded-lg font-bold mt-2">' + (isEdit ? 'حفظ التعديلات' : 'إضافة المنتج') + '</button>' +
+                '<button type="button" onclick="closeUtuModal(this)" class="w-full py-3 border border-gray-600 rounded-lg font-bold hover:bg-gray-900">إلغاء والرجوع</button>' +
                 '</div></div>';
             document.body.appendChild(modal);
             // نعبّئ الحقول عبر JS مباشرة بدل الاعتماد فقط على value في الـHTML لضمان ظهور اسم المنتج والبيانات الأخرى دائماً عند التعديل
