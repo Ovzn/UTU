@@ -578,6 +578,14 @@
 
         // أقسام أساسية لا يمكن حذفها نهائياً من لوحة التحكم لأن الموقع يعتمد عليها في صفحات أخرى
         const PROTECTED_CATEGORY_IDS = ["sunglasses"];
+        // «جديد» و«الأكثر طلباً» لم تعد أقساماً، بل ستيكر مميز يختاره الأدمن داخل نموذج المنتج
+        const STICKER_CAT_IDS = ['new', 'bestseller'];
+        function visibleCategories() { return categories.filter(function(c) { return STICKER_CAT_IDS.indexOf(c.id) === -1; }); }
+        function productSticker(p) {
+            if (p && p.sticker !== undefined && p.sticker !== null) return p.sticker; // اختيار صريح (حتى لو فارغ = بدون ستيكر)
+            const cats = (p && p.categories) || [];
+            return cats.indexOf('bestseller') > -1 ? 'bestseller' : (cats.indexOf('new') > -1 ? 'new' : ''); // توافق مع المنتجات القديمة
+        }
 
 
         // ==================== محافظات العراق (19 محافظة) ====================
@@ -1383,7 +1391,7 @@
             const linkCls = 'fx-cat text-sm font-medium hover:text-accent transition-colors whitespace-nowrap';
             if (desktop) {
                 desktop.innerHTML = '<a href="#" onclick="filterByCategory(\'all\'); return false;" class="' + linkCls + '"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</a>' +
-                    categories.map(function(c) {
+                    visibleCategories().map(function(c) {
                         return '<a href="#" onclick="filterByCategory(\'' + escapeHtml(c.id) + '\'); return false;" class="' + linkCls + '"' + fxAttr(c.font,'cat') + '>' + escapeHtml(c.name) + '</a>';
                     }).join('');
             }
@@ -1391,7 +1399,7 @@
                 const itemCls = 'fx-cat flex items-center justify-between py-2 px-4 hover:bg-gray-900 rounded-lg';
                 mobile.innerHTML = '<a href="#" onclick="closeMobileMenu(); filterByCategory(\'all\'); return false;" class="' + itemCls + '">' +
                     '<span class="flex items-center gap-3"><i class="fas fa-th-large text-accent w-5 text-center"></i><span' + fxAttr(siteSettings.allFont,'cat') + '>الكل</span></span><span class="text-xs text-gray-400">' + products.length + '</span></a>' +
-                    categories.map(function(c) {
+                    visibleCategories().map(function(c) {
                         const count = products.filter(function(p) { return (p.categories || []).indexOf(c.id) > -1; }).length;
                         return '<a href="#" onclick="closeMobileMenu(); filterByCategory(\'' + escapeHtml(c.id) + '\'); return false;" class="' + itemCls + '">' +
                             '<span class="flex items-center gap-3"><i class="fas ' + escapeHtml(c.icon || 'fa-tag') + ' text-accent w-5 text-center"></i><span' + fxAttr(c.font,'cat') + '>' + escapeHtml(c.name) + '</span></span>' +
@@ -1446,8 +1454,8 @@
         function renderProductCard(product) {
             const availableColors = product.colors.filter(function(c) { return c.available; });
             const open = 'router.navigate(\'product\',' + product.id + ')';
-            const cats = product.categories || [];
-            const badge = cats.indexOf('bestseller') > -1 ? '<span class="badge-pill">الأكثر طلباً</span>' : (cats.indexOf('new') > -1 ? '<span class="badge-new">جديد</span>' : '');
+            const stk = productSticker(product);
+            const badge = stk === 'bestseller' ? '<span class="badge-pill">الأكثر طلباً</span>' : (stk === 'new' ? '<span class="badge-new">جديد</span>' : '');
             const fav = isInWishlist(product.id);
             return '<div class="product-card relative cursor-pointer" onclick="' + open + '">' +
                 '<div class="img-wrap relative overflow-hidden aspect-square">' + IMG_LOADER_HTML +
@@ -1631,7 +1639,7 @@
         function renderHome() {
             const cat = state.homeCat || 'all', view = state.homeView || 'grid';
             const list = products.filter(function(p) { return cat === 'all' || (p.categories || []).indexOf(cat) > -1; });
-            const chips = '<button class="fx-cat chip' + (cat === 'all' ? ' on' : '') + '" onclick="setHomeCat(\'all\')"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</button>' + categories.map(function(c) {
+            const chips = '<button class="fx-cat chip' + (cat === 'all' ? ' on' : '') + '" onclick="setHomeCat(\'all\')"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</button>' + visibleCategories().map(function(c) {
                 return '<button class="fx-cat chip' + (cat === c.id ? ' on' : '') + '" onclick="setHomeCat(\'' + escapeHtml(c.id) + '\')"' + fxAttr(c.font,'cat') + '>' + escapeHtml(c.name) + '</button>';
             }).join('');
             return '<div class="fade-in">' +
@@ -2273,7 +2281,7 @@
                 '<button onclick="openAllFontForm()" class="flex-1 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm font-bold hover:border-accent"><i class="fas fa-edit ml-1"></i>تعديل</button>' +
                 '<button disabled title="قسم أساسي لا يمكن حذفه" class="flex-1 py-2 bg-gray-800 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed"><i class="fas fa-lock ml-1"></i>محمي</button>' +
                 '</div></div>';
-            const cards = allCard + categories.map(function(c) {
+            const cards = allCard + visibleCategories().map(function(c) {
                 const countInCat = products.filter(function(p) { return (p.categories || []).indexOf(c.id) > -1; }).length;
                 const isProtected = PROTECTED_CATEGORY_IDS.indexOf(c.id) > -1;
                 return '<div class="bg-[#1a2236] border border-gray-800 rounded-xl overflow-hidden">' +
@@ -2462,7 +2470,7 @@
             const isEdit = productId !== null && productId !== undefined;
             const product = isEdit ? products.find(function(p) { return p.id === productId; }) : null;
             const productCats = product ? (product.categories || []) : [];
-            const catCheckboxes = categories.map(function(c) {
+            const catCheckboxes = visibleCategories().map(function(c) {
                 const isPicked = productCats.indexOf(c.id) > -1;
                 return '<label class="color-swatch-label' + (isPicked ? ' picked' : '') + '" style="flex-direction:row;justify-content:flex-start;gap:8px;padding:8px 10px;">' +
                     '<input type="checkbox" class="hidden pf-cat-checkbox" value="' + c.id + '"' + (isPicked ? ' checked' : '') + ' onchange="this.closest(\'.color-swatch-label\').classList.toggle(\'picked\', this.checked)">' +
@@ -2475,6 +2483,11 @@
                 '<div class="space-y-3">' +
                 '<div><label class="text-sm text-gray-300 block mb-1">اسم المنتج</label><input id="pf-name" type="text" class="w-full px-3 py-2 border border-gray-700 rounded-lg input-focus outline-none"></div>' +
                 renderFontPicker('pf-name-font', product && product.nameFont, 'pf-name', 'name', 'نوع خط اسم المنتج') +
+                '<div><label class="text-sm text-gray-300 block mb-2">ستيكر مميز (يظهر فوق اسم المنتج)</label><div id="pf-sticker" class="flex gap-2 flex-wrap">' +
+                    [['', 'بدون'], ['new', 'جديد'], ['bestseller', 'الأكثر طلباً']].map(function(o) {
+                        const on = productSticker(product) === o[0];
+                        return '<label class="size-option' + (on ? ' selected' : '') + '" style="cursor:pointer;padding:0 14px"><input type="radio" name="pf-sticker" value="' + o[0] + '" class="hidden"' + (on ? ' checked' : '') + ' onchange="document.querySelectorAll(\'#pf-sticker .size-option\').forEach(function(l){l.classList.toggle(\'selected\', l.querySelector(\'input\').checked)})">' + o[1] + '</label>';
+                    }).join('') + '</div></div>' +
                 '<div><label class="text-sm text-gray-300 block mb-2">الأقسام (يمكن اختيار أكثر من قسم للمنتج الواحد)</label>' +
                 '<div id="pf-categories" class="grid grid-cols-2 sm:grid-cols-3 gap-2">' + catCheckboxes + '</div></div>' +
                 '<div class="grid grid-cols-1 gap-3">' +
@@ -2592,6 +2605,8 @@
             const checkedCatBoxes = document.querySelectorAll('#pf-categories .pf-cat-checkbox:checked');
             let selectedCategories = Array.prototype.map.call(checkedCatBoxes, function(cb) { return cb.value; });
             selectedCategories = selectedCategories.filter(function(id) { return categories.some(function(c) { return c.id === id; }); });
+            const stickerEl = document.querySelector('#pf-sticker input:checked');
+            const sticker = stickerEl ? stickerEl.value : '';
             const price = Number(document.getElementById('pf-price').value) || 0;
             const oldPrice = null; // السعر القديم محذوف من المتجر والإدارة
             const rawImages = pfImages.slice();
@@ -2617,7 +2632,7 @@
                 if (productId !== null && productId !== undefined) {
                     const product = products.find(function(p) { return p.id === productId; });
                     if (product) {
-                        product.name = name; product.categories = selectedCategories; product.price = price; product.oldPrice = oldPrice;
+                        product.name = name; product.categories = selectedCategories; product.sticker = sticker; product.price = price; product.oldPrice = oldPrice;
                         product.discount = discount; product.saveAmount = saveAmount; product.images = images;
                         product.colors = colors; product.stock = stock; product.stockStatus = stock > 0 ? (stock < 6 ? 'low' : 'available') : 'out';
                         product.description = description; product.nameFont = nameFont; product.descFont = descFont; product.fonts = fonts; delete product.fullDescription; product.oldPrice = null;
@@ -2626,7 +2641,7 @@
                 } else {
                     savedId = getNextProductId();
                     products.push({
-                        id: savedId, name: name, categories: selectedCategories, price: price, oldPrice: oldPrice, discount: discount, saveAmount: saveAmount,
+                        id: savedId, name: name, categories: selectedCategories, sticker: sticker, price: price, oldPrice: oldPrice, discount: discount, saveAmount: saveAmount,
                         images: images, colors: colors, sizes: [{ name: 'قياسي', available: true }],
                         stock: stock, stockStatus: stock > 0 ? (stock < 6 ? 'low' : 'available') : 'out',
                         description: description, nameFont: nameFont, descFont: descFont, fonts: fonts,
