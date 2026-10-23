@@ -1382,7 +1382,7 @@
             const mobile = document.getElementById('mobile-menu-categories');
             const linkCls = 'fx-cat text-sm font-medium hover:text-accent transition-colors whitespace-nowrap';
             if (desktop) {
-                desktop.innerHTML = '<a href="#" onclick="filterByCategory(\'all\'); return false;" class="' + linkCls + '">الكل</a>' +
+                desktop.innerHTML = '<a href="#" onclick="filterByCategory(\'all\'); return false;" class="' + linkCls + '"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</a>' +
                     categories.map(function(c) {
                         return '<a href="#" onclick="filterByCategory(\'' + escapeHtml(c.id) + '\'); return false;" class="' + linkCls + '"' + fxAttr(c.font,'cat') + '>' + escapeHtml(c.name) + '</a>';
                     }).join('');
@@ -1390,7 +1390,7 @@
             if (mobile) {
                 const itemCls = 'fx-cat flex items-center justify-between py-2 px-4 hover:bg-gray-900 rounded-lg';
                 mobile.innerHTML = '<a href="#" onclick="closeMobileMenu(); filterByCategory(\'all\'); return false;" class="' + itemCls + '">' +
-                    '<span class="flex items-center gap-3"><i class="fas fa-th-large text-accent w-5 text-center"></i>الكل</span><span class="text-xs text-gray-400">' + products.length + '</span></a>' +
+                    '<span class="flex items-center gap-3"><i class="fas fa-th-large text-accent w-5 text-center"></i><span' + fxAttr(siteSettings.allFont,'cat') + '>الكل</span></span><span class="text-xs text-gray-400">' + products.length + '</span></a>' +
                     categories.map(function(c) {
                         const count = products.filter(function(p) { return (p.categories || []).indexOf(c.id) > -1; }).length;
                         return '<a href="#" onclick="closeMobileMenu(); filterByCategory(\'' + escapeHtml(c.id) + '\'); return false;" class="' + itemCls + '">' +
@@ -1631,7 +1631,7 @@
         function renderHome() {
             const cat = state.homeCat || 'all', view = state.homeView || 'grid';
             const list = products.filter(function(p) { return cat === 'all' || (p.categories || []).indexOf(cat) > -1; });
-            const chips = '<button class="fx-cat chip' + (cat === 'all' ? ' on' : '') + '" onclick="setHomeCat(\'all\')">الكل</button>' + categories.map(function(c) {
+            const chips = '<button class="fx-cat chip' + (cat === 'all' ? ' on' : '') + '" onclick="setHomeCat(\'all\')"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</button>' + categories.map(function(c) {
                 return '<button class="fx-cat chip' + (cat === c.id ? ' on' : '') + '" onclick="setHomeCat(\'' + escapeHtml(c.id) + '\')"' + fxAttr(c.font,'cat') + '>' + escapeHtml(c.name) + '</button>';
             }).join('');
             return '<div class="fade-in">' +
@@ -2243,8 +2243,37 @@
         }
 
         // ==================== ADMIN CATEGORIES ====================
+        function openAllFontForm() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 overflow-y-auto';
+            modal.innerHTML = '<div class="bg-[#1a2236] rounded-2xl p-6 max-w-md w-full my-8 fade-in">' +
+                '<div class="utu-modal-head flex items-center justify-between mb-4"><h3 class="text-xl font-bold">تعديل تصنيف «الكل»</h3><button type="button" onclick="closeUtuModal(this)" aria-label="إغلاق" title="إغلاق" class="utu-close"><i class="fas fa-times"></i></button></div>' +
+                '<div class="space-y-3">' +
+                '<div id="all-preview" class="rounded-xl border border-gray-800 py-5 text-center text-xl font-bold">الكل</div>' +
+                renderFontPicker('all-font', siteSettings.allFont, 'all-preview', 'cat', 'نوع خط «الكل»') +
+                '<button type="button" onclick="saveAllFont()" class="w-full py-3 btn-primary text-white rounded-lg font-bold mt-2">حفظ</button>' +
+                '<button type="button" onclick="closeUtuModal(this)" class="w-full py-3 border border-gray-600 rounded-lg font-bold hover:bg-gray-900">إلغاء والرجوع</button>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+            applyInitialFont('all-font');
+        }
+        function saveAllFont() {
+            const v = (document.getElementById('all-font') || {}).value || '';
+            document.querySelectorAll('.modal-overlay').forEach(function(m) { m.remove(); });
+            writeSiteSettings(Object.assign({}, siteSettings, { allFont: v }));
+            if (typeof renderNavCategories === 'function') renderNavCategories();
+            router.navigate('admin-categories');
+        }
         function renderAdminCategories() {
-            const cards = categories.map(function(c) {
+            const allCard = '<div class="bg-[#1a2236] border border-gray-800 rounded-xl overflow-hidden">' +
+                '<div class="relative h-32 flex flex-col items-center justify-center bg-gray-900"><i class="fas fa-th-large text-accent"></i>' +
+                '<h4 class="fx-cat font-bold text-sm mt-1"' + fxAttr(siteSettings.allFont,'cat') + '>الكل</h4>' +
+                '<span class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-full">' + products.length + ' منتج</span></div>' +
+                '<div class="p-3 flex gap-2">' +
+                '<button onclick="openAllFontForm()" class="flex-1 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm font-bold hover:border-accent"><i class="fas fa-edit ml-1"></i>تعديل</button>' +
+                '<button disabled title="قسم أساسي لا يمكن حذفه" class="flex-1 py-2 bg-gray-800 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed"><i class="fas fa-lock ml-1"></i>محمي</button>' +
+                '</div></div>';
+            const cards = allCard + categories.map(function(c) {
                 const countInCat = products.filter(function(p) { return (p.categories || []).indexOf(c.id) > -1; }).length;
                 const isProtected = PROTECTED_CATEGORY_IDS.indexOf(c.id) > -1;
                 return '<div class="bg-[#1a2236] border border-gray-800 rounded-xl overflow-hidden">' +
@@ -2810,6 +2839,7 @@
         const SITE_DEFAULTS = {
             annText: 'توصيل سريع لجميع المحافظات 🚚',
             annFont: '',
+            allFont: '',
             footerDesc: 'متجر UTU - أوتو لبيع النظارات والساعات الأصلية بأفضل الأسعار وأعلى جودة.',
             aboutSub: 'UTU - أوتو - متجر متخصص ببيع النظارات والساعات الأصلية',
             aboutMission: 'نوفر لك نظارات وساعات أصلية بجودة عالية وحماية كاملة من أشعة الشمس، بأسعار تناسب الجميع.',
@@ -2835,9 +2865,11 @@
             db.collection('meta').doc('site_settings').onSnapshot(function(doc) {
                 setTimeout(function() { window.utuReady && window.utuReady('settings'); }, 0);
                 if (doc.metadata.hasPendingWrites || !doc.exists) return;
+                const prevAll = siteSettings.allFont;
                 siteSettings = Object.assign({}, SITE_DEFAULTS, doc.data());
                 try { localStorage.setItem('utu_site_settings', JSON.stringify(siteSettings)); } catch (e) {}
                 applySiteSettings();
+                if (prevAll !== siteSettings.allFont) { if (typeof renderNavCategories === 'function') renderNavCategories(); router.refreshSoon(); }
                 if (router.currentPage === 'about') router.refreshSoon();
             }, function(e) { console.error('تعذّر تحميل إعدادات الموقع:', e); window.utuReady && window.utuReady('settings'); });
         }
@@ -2877,7 +2909,7 @@
         function saveSiteSettings() {
             const v = function(id) { const el = document.getElementById(id); return el ? el.value : ''; };
             writeSiteSettings({
-                annText: v('st-ann').trim(), annFont: v('st-ann-font'), footerDesc: v('st-footer').trim(),
+                annText: v('st-ann').trim(), annFont: v('st-ann-font'), allFont: siteSettings.allFont || '', footerDesc: v('st-footer').trim(),
                 aboutSub: v('st-about-sub').trim(), aboutMission: v('st-about-mission').trim(), aboutVision: v('st-about-vision').trim()
             });
         }
